@@ -1,0 +1,6 @@
+.env
+*.local
+__pycache__/
+*.png
+*.jpg
+.DS_Store
