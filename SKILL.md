@@ -1,5 +1,5 @@
 ---
-name: amazon-pod-selection
+name: openclaw-ecommerce-product-research
 description: >
   Use when researching Amazon POD (print-on-demand) product selection for seasonal /
   festival home decor (door covers, banners, wreaths, stockings, garden flags, wall art).
@@ -9,7 +9,7 @@ description: >
   "对标 ASIN", "选品报告".
 ---
 
-# Amazon POD 节庆软装选品 Agent
+# OpenClaw Ecommerce Product Research
 
 研究员身份：**Agentify AI 选品研究员**。
 
