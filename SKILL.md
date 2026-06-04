@@ -24,6 +24,7 @@ description: >
 - `PANGOLIN_MCP_URL` — Amazon 商品/榜单/评论 + Google Trends/AI Overview + WIPO/PACER 的 MCP 端点（含 api_key）
 - `TAVILY_API_KEY` — Reddit / 社媒 / 通用 web 讨论检索
 - `KIE_API_KEY` — kie.ai gpt-image-2 出图
+- `EXA_API_KEY` — 神经检索，补 1688/阿里国际站/独立站/中文工厂端竞品（Pangolin 覆盖不到的源）
 
 调用配方见 [`references/data-sources.md`](references/data-sources.md)。
 

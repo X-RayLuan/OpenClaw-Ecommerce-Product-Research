@@ -58,7 +58,32 @@ curl -sS -X POST 'https://api.tavily.com/search' -H 'Content-Type: application/j
 
 ---
 
-## 3. 出图（kie.ai gpt-image-2）
+## 3. 中文电商 / 工厂端竞品 + 神经检索（Exa）
+
+Pangolin 主攻 Amazon 美/欧；**1688、阿里国际站、独立站、中文工厂黄页、小众社区**这些它覆盖不到的源用 Exa 补。
+Exa 是神经/语义检索，适合"找同类工厂 / 找某品类货源 / 找竞品独立站"这种模糊意图。`type=auto` 自动在 neural/keyword 间择优。
+
+```bash
+# 搜索（可选 includeDomains 锁定平台；contents.text 直接回正文）
+curl -sS --max-time 60 -X POST 'https://api.exa.ai/search' \
+  -H "x-api-key: $EXA_API_KEY" -H 'Content-Type: application/json' \
+  -d '{"query":"<意图，如：义乌 丝巾 围巾 工厂 / silk scarf supplier>","numResults":10,"type":"auto",
+       "includeDomains":["1688.com","alibaba.com"],
+       "contents":{"text":{"maxCharacters":1500}}}'
+
+# 取全文（拿到 URL 后回填完整正文，maxCharacters 调大）
+curl -sS --max-time 90 -X POST 'https://api.exa.ai/contents' \
+  -H "x-api-key: $EXA_API_KEY" -H 'Content-Type: application/json' \
+  -d '{"urls":["<url1>","<url2>"],"text":{"maxCharacters":2600}}'
+```
+读 `results[].{title,url,text}`。`type` 可选 `neural`(语义)/`keyword`(精确词)/`auto`。
+**脱敏**：对外报告里 Exa 抓到的内容按**原始来源**标注（1688 / 阿里国际站 / 某独立站），不出现 "Exa"。
+
+> 适用：步骤1 找对标工厂/货源、找竞品独立站；步骤2 找中文社区/小红书风格讨论（Tavily 偏英文社媒，中文源 Exa 更准）。
+
+---
+
+## 4. 出图（kie.ai gpt-image-2）
 
 ```bash
 # 提交任务（竖款门挂用 aspect_ratio=1:2）
