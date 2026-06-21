@@ -21,34 +21,39 @@ description: >
 
 所有密钥走环境变量，**不要把真实 key 写进任何产出文件**。见 `.env.example`：
 
-- `PANGOLIN_MCP_URL` — Amazon 商品/榜单/评论 + Google Trends/AI Overview + WIPO/PACER 的 MCP 端点（含 api_key）
-- `TAVILY_API_KEY` — Reddit / 社媒 / 通用 web 讨论检索
-- `KIE_API_KEY` — kie.ai gpt-image-2 出图
-- `EXA_API_KEY` — 神经检索，补 1688/阿里国际站/独立站/中文工厂端竞品（Pangolin 覆盖不到的源）
+**核心搜索（必需）—— 本 skill 默认仅靠这两个即可跑通全流程：**
+- `EXA_API_KEY` — 神经/语义检索。做对标竞品发现：锁 `amazon.com` 拿对标 PDP/listing，锁独立站 / 1688 / 阿里国际站找货源与玩法。
+- `TAVILY_API_KEY` — Reddit / 社媒 / 通用 web 讨论与口碑（常能抓到 Walmart / Amazon 差评原声）。
+
+**出图：**
+- `KIE_API_KEY` — kie.ai gpt-image-2 出图。
+
+**可选增强（配了更准、更省事；没配也能跑，用 Exa+Tavily 平替）：**
+- `PANGOLIN_MCP_URL` — 结构化 Amazon 商品/榜单/评论 + Google Trends/AI Overview + WIPO/PACER 的 MCP 端点（含 api_key）。
 
 调用配方见 [`references/data-sources.md`](references/data-sources.md)。
 
-> ⚠️ **数据源脱敏铁律**：客户/对外报告里**不得出现上游数据厂商名（Pangolinfo/鲲数据、Tavily 等）**。
+> ⚠️ **数据源脱敏铁律**：客户/对外报告里**不得出现上游数据厂商名（Pangolinfo/鲲数据、Exa、Tavily 等）**。
 > 只按原始来源标注：Amazon、Google（Trends / AI Overview）、Reddit、Walmart 评论、Pinterest、
 > USPTO/WIPO 外观设计库。
 
 ## 1. 研究流程（逐步执行，每步先产出结论再进下一步）
 
-**步骤1 · 视觉元素 + 对标盘点｜来源 Amazon**
-- 关键词搜索拿首屏 ASIN（价/星/评/sponsored）→ `search_amazon`
-- 类目 Best Sellers（长青）+ New Releases（近30天新进）→ `list_bestsellers` / `list_new_releases`
-- 对 Top 候选逐个拆 PDP 主图视觉元素（符号/配色/版式/定制位/卖点文案）→ `get_amazon_product`
-- 输出"高转化视觉元素清单"，每条标注证据 ASIN + 评论数 + 价。
+**步骤1 · 视觉元素 + 对标盘点｜来源 Amazon / 独立站**
+- 默认：用 Exa 锁 `amazon.com` 搜对标，拿对标 PDP/listing，提取价 / 卖点 / 视觉元素 → Exa search `includeDomains:["amazon.com"]`；再锁独立站 / 1688 / 阿里国际站找货源与定制玩法 → Exa。
+- 〔可选〕配了 Pangolin 时改用结构化取数：`search_amazon` 拿首屏 ASIN（价/星/评/sponsored）、`list_bestsellers` / `list_new_releases` 拿榜单、`get_amazon_product` 拆 PDP。
+- 对 Top 候选逐个拆主图视觉元素（符号/配色/版式/定制位/卖点文案）。
+- 输出"高转化视觉元素清单"，每条标注证据链接（对标 ASIN / listing URL）+ 价。
 
-**步骤2 · 社媒讨论与口碑｜来源 Reddit / Walmart 评论 / Google**
-- 对标差评挖雷区（尺寸不准/掉色/廉价感/预期错配）→ `get_amazon_reviews(filterByStar=critical)`
-- Reddit + 社媒讨论 → Tavily（`include_domains: reddit.com`）+ 通用 Tavily
-- Google 原声/内容竞争 → `ai_search(mode=overview)`
+**步骤2 · 社媒讨论与口碑｜来源 Reddit / 社媒 / 评论**
+- Reddit + 社媒讨论 → Tavily（`include_domains:["reddit.com"]`）+ 通用 Tavily。
+- 对标差评挖雷区（尺寸不准/掉色/廉价感/预期错配）→ Tavily 搜 "<product> review problems / complaints"（常抓到 Walmart / Amazon 差评原声）；〔可选〕配了 Pangolin 用 `get_amazon_reviews(filterByStar=critical)` 拿结构化差评。
+- 中文社区 / 小红书风格讨论 → Exa（中文源比 Tavily 准）。
 - 输出"加分点 / 雷区"两栏（大家觉得哪些有意思、哪些不好）。
 
-**步骤3 · 搜索趋势｜来源 Google Trends**
-- 对比同类节日词 + 元素词（egg / bunny / spring / floral / gnome …）→ `keyword_trends`
-- 找哪个**元素**热度高、季节性曲线、达峰月，反推上架窗口。
+**步骤3 · 搜索趋势与热度｜来源 Google / web**
+- 默认（无 Pangolin 的平替）：用 Tavily / Exa 估热度——搜 "<element> trend 2026 / best selling <holiday> decor"，看近段内容量、卖家上新密度、媒体与社区讨论度，**定性**判断元素热度与上架窗口（注明这是定性代理，非 Google Trends 指数）。
+- 〔可选〕配了 Pangolin 时用 `keyword_trends` 对比节日词 + 元素词，拿季节性曲线 / 达峰月 / Breakout 上升词（定量更准）。
 - ⚠️ 注意搜索伞：常有更大的上位词（如 "spring" ≫ "easter"），主词要跟着改。
 
 **步骤4 · 季节性×节日 映射（按 Amazon 备货前置期倒推）**
@@ -66,8 +71,8 @@ description: >
 - 产品名 | 路径(A/B) | 目标节日或利基
 - 对标 ASIN（链接）+ 主图视觉卖点元素逐条提取
 - **侵权风险【硬规则｜来源 USPTO/WIPO】**：
-  - `wipo_search(source=USID, prod=<product>)` 查美国外观设计；`wipo_search(source=USID, hol=<对标品牌>)` 查品牌布局
-  - 命中风险专利号再 `pacer_search(patentNumber=...)` 查美国诉讼（最贵，仅高疑时用）
+  - 默认（无 Pangolin 的平替）：用 Exa / Tavily 锁 `uspto.gov` / `tmsearch.uspto.gov` / `justia.com` / `trademarkia.com` 搜「产品 + 对标品牌」的外观专利与商标，做尽调级排查（注明为公开检索、非官方库逐条核验）。
+  - 〔可选〕配了 Pangolin 时用官方库：`wipo_search(source=USID, prod=<product>)` 查美国外观设计、`wipo_search(source=USID, hol=<对标品牌>)` 查品牌布局；命中风险专利号再 `pacer_search(patentNumber=...)` 查美国诉讼（最贵，仅高疑时用）。
   - 判定 高/中/低。**高风险直接弃用，换次优低风险对标重做本节，并说明替换原因。**
   - 特别盯：影视角色（恐怖片/迪士尼/漫威）、球队、品牌字体、名人肖像。
 - 产品优化建议（相对对标：尺寸/材质/定制玩法/套装）
@@ -82,7 +87,7 @@ description: >
 - 侵权零容忍：宁可不推也不推高风险品；生成图必须原创可商用，生成后**肉眼校验文字拼写**。
 - 每个建议必须有真实可点击对标 ASIN 链接，无链接视为无效。
 - 只推工厂能做的印刷软装品类，不推硬质电子/大型灯具。
-- 积点意识：评论与诉讼检索最贵，先小批探（pageCount=1）再放量。
+- 成本意识：Exa 取全文 / Tavily advanced（以及配了 Pangolin 时的评论、诉讼检索）较贵——先小批探（`numResults` / `max_results` 调小、`pageCount=1`）再放量。
 
 ## 5. 报告模板
 
