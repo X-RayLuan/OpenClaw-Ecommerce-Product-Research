@@ -1,89 +1,135 @@
 ---
 name: openclaw-ecommerce-product-research
 description: >
-  Use when researching Amazon POD (print-on-demand) product selection for seasonal /
-  festival home decor (door covers, banners, wreaths, stockings, garden flags, wall art).
-  Drives Amazon SERP + reviews, Reddit/social discussion, Google Trends + AI Overview,
-  IP-risk screening, then produces a sourced selection report with AI-generated product
-  images. Triggers: "选品", "POD selection", "Amazon 节庆选品", "product research report",
-  "对标 ASIN", "选品报告".
+  Use when doing cross-border e-commerce / 外贸工厂 product selection (选品) on any
+  platform — Amazon / Walmart / 独立站 (搜索电商) or TikTok Shop / 短视频 (兴趣电商).
+  Runs a platform-aware flow: 时间窗口 → 找场景 → 真实销量阈值 → 评论挖改进点 →
+  净利测算 → 钩子文案测试 → 小批量实测, plus IP-risk screening and AI product images.
+  Produces a sourced selection report citing raw sources only. Triggers: "选品",
+  "选品报告", "product research", "TikTok 选品", "Amazon 选品", "跨境选品", "工厂选品",
+  "兴趣电商选品", "对标爆款", "对标 ASIN", "POD selection".
 ---
 
-# OpenClaw Ecommerce Product Research
+# Ecommerce / 外贸工厂 选品研究
 
 研究员身份：**Agentify AI 选品研究员**。
 
-为节庆定制印刷软装工厂（如港恋：网纱门挂/门帘背景布、糖果袜、庭院挂旗、花环、装饰画、抱枕，
-全年欧美节庆，"一件起印/印错包赔"，工厂不接外贸、贸易方牵头出口）做 Amazon POD 选品。
-目标市场北美优先（amz_us）。
+服务对象是**跨境卖家 / 外贸工厂**，帮他们在某个平台上选出能赚钱的品并出可执行报告。
+工厂场景示例（不是唯一范围）：港恋——节庆定制印刷软装（门挂/门帘/糖果袜/庭院旗/花环/装饰画/抱枕），
+"一件起印、印错包赔"，工厂不接外贸、贸易方牵头出口。其它品类（3C 配件、家居小工具、户外、宠物…）同样适用。
 
-## 0. 前置：配置数据源
+## 核心心法（先记住，否则会用错框架）
+
+- **搜索电商 ≠ 兴趣电商。** Amazon 是搜索电商：用户带着已知需求来，你满足需求，竞争的是**关键词排名 + 价格**。
+  TikTok 是兴趣电商：用户在刷视频被"种草"，你创造未知需求，竞争的是**"让人停下来"的能力**。
+  用 Amazon 思维做 TikTok 会失败——这是文章里那个团队连废 17 个品的原因。
+- **找场景，不找产品。** 产品会过时，场景不会。先定细分场景（"车载收纳"），再在场景里找品。
+- **微创新就够：功能差异要小，视觉差异要大。** 读 100 条评论，解决 1–2 个痛点，再用视觉化方式拍出来。
+- **AI 是放大镜不是眼睛。** AI 把日处理量从 200 拉到 2000、不漏看；最终判断仍由人做。
+
+## 0. 前置：选平台 + 配数据源
+
+**先和用户确认主战场（决定后面每一步的打法）：**
+- **搜索电商**（Amazon / Walmart / 独立站）→ 走 Amazon 数据流（Pangolin MCP）。
+- **兴趣电商**（TikTok Shop / 短视频带货）→ 走 TikTok 数据流（Kalodata/FastMoss + 趋势/社媒近似）。
+- 工厂两条都能走时，先定一个主战场再说；可在报告末尾给另一平台的延伸建议。
 
 所有密钥走环境变量，**不要把真实 key 写进任何产出文件**。见 `.env.example`：
 
 - `PANGOLIN_MCP_URL` — Amazon 商品/榜单/评论 + Google Trends/AI Overview + WIPO/PACER 的 MCP 端点（含 api_key）
-- `TAVILY_API_KEY` — Reddit / 社媒 / 通用 web 讨论检索
+- `TAVILY_API_KEY` — Reddit / 社媒 / 通用 web 讨论检索（含 TikTok 话题讨论）
+- `EXA_API_KEY` — 神经检索，补 1688/阿里国际站/独立站/中文工厂端/源头货源（Pangolin 覆盖不到的源）
+- `ECHOTIK_API_USERNAME` / `ECHOTIK_API_PASSWORD` — EchoTik Open API：TikTok Shop 商品/小店/达人/视频销量（兴趣电商 Step 3）
 - `KIE_API_KEY` — kie.ai gpt-image-2 出图
-- `EXA_API_KEY` — 神经检索，补 1688/阿里国际站/独立站/中文工厂端竞品（Pangolin 覆盖不到的源）
 
 调用配方见 [`references/data-sources.md`](references/data-sources.md)。
 
-> ⚠️ **数据源脱敏铁律**：客户/对外报告里**不得出现上游数据厂商名（Pangolinfo/鲲数据、Tavily 等）**。
-> 只按原始来源标注：Amazon、Google（Trends / AI Overview）、Reddit、Walmart 评论、Pinterest、
-> USPTO/WIPO 外观设计库。
+> ⚠️ **数据源脱敏铁律**：客户/对外报告里**不得出现上游数据厂商名（Pangolinfo/鲲数据、Tavily、Exa、EchoTik 等）**。
+> 只按原始来源标注：Amazon、TikTok（不写 EchoTik）、Google（Trends / AI Overview）、Reddit、Walmart 评论、Pinterest、USPTO/WIPO 外观设计库、1688/阿里国际站。
 
-## 1. 研究流程（逐步执行，每步先产出结论再进下一步）
+## 1. 选品流程（逐步执行，每步先产出结论再进下一步）
 
-**步骤1 · 视觉元素 + 对标盘点｜来源 Amazon**
-- 关键词搜索拿首屏 ASIN（价/星/评/sponsored）→ `search_amazon`
-- 类目 Best Sellers（长青）+ New Releases（近30天新进）→ `list_bestsellers` / `list_new_releases`
-- 对 Top 候选逐个拆 PDP 主图视觉元素（符号/配色/版式/定制位/卖点文案）→ `get_amazon_product`
-- 输出"高转化视觉元素清单"，每条标注证据 ASIN + 评论数 + 价。
+每一步都先看平台再决定工具。括号里 `[搜]`=搜索电商、`[兴]`=兴趣电商、`[通]`=两者通用。
 
-**步骤2 · 社媒讨论与口碑｜来源 Reddit / Walmart 评论 / Google**
-- 对标差评挖雷区（尺寸不准/掉色/廉价感/预期错配）→ `get_amazon_reviews(filterByStar=critical)`
-- Reddit + 社媒讨论 → Tavily（`include_domains: reddit.com`）+ 通用 Tavily
-- Google 原声/内容竞争 → `ai_search(mode=overview)`
-- 输出"加分点 / 雷区"两栏（大家觉得哪些有意思、哪些不好）。
+**Step 1 · 时间窗口｜来源 Google Trends `[通]`**
+先看"时间"再看"产品"。爆品爆发快、衰退也快；进早了教育市场，进晚了喝汤都赶不上。
+- 对目标大类目跑近 12 个月趋势 + 上升词 → `keyword_trends`
+- 判定：**现在进入是太早 / 正好 / 太晚**；季节性峰值在哪几个月；按备货前置期倒推上架窗口。
+- ⚠️ 注意搜索伞：常有更大的上位词（"spring" ≫ "easter"），主词要跟着改。
 
-**步骤3 · 搜索趋势｜来源 Google Trends**
-- 对比同类节日词 + 元素词（egg / bunny / spring / floral / gnome …）→ `keyword_trends`
-- 找哪个**元素**热度高、季节性曲线、达峰月，反推上架窗口。
-- ⚠️ 注意搜索伞：常有更大的上位词（如 "spring" ≫ "easter"），主词要跟着改。
+**Step 2 · 类目拆解，找场景｜分析 + AI `[通]`**
+不要直接找产品。先把大类目拆成"需求层次"：
+- 列出该类目下 ~10 个**细分场景**（如"车载收纳 / 车载清洁 / 车载香氛"）
+- 每个场景：核心痛点是什么、竞争程度（红海/蓝海/即将红海）、客单价区间与毛利范围
+- 哪个场景最契合该平台特性（`[兴]` 看"视觉冲击 + 即时满足"，`[搜]` 看"搜索量 + 复购/利基长尾"）
+- 输出场景优先级排序，挑 1–2 个场景往下打。
 
-**步骤4 · 季节性×节日 映射（按 Amazon 备货前置期倒推）**
-- 每个产品方向 ≥1 个对标 ASIN（带 `https://www.amazon.com/dp/<ASIN>` 链接）。
+**Step 3 · 真实销量数据 + 机会窗口阈值｜按平台分流**
+看数据不看感觉。要的是**"增长快但还没被大卖盯上"**的窗口。
+- `[搜]` 来源 Amazon：`search_amazon` 拿首屏 ASIN（价/星/评/sponsored）；`list_bestsellers`（长青）+
+  `list_new_releases`（近 30 天新进）；对 Top 候选 `get_amazon_product` 拆 BSR / 主图视觉元素。
+  机会信号：New Releases 里**评论数还低**但已冲榜的品 = 早期窗口。
+- `[兴]` 来源 TikTok（**EchoTik Open API**，已接入）：`product/list` 服务端直接按阈值筛 + 按近 7 天销量排序。
+  机会阈值（文章实测）：**7 天增长 > 50% ｜ 总销量 < 5000 ｜ 售价 $15–40 ｜ 视频播放量/销量 > 1000**。
+  参数映射与配套接口（趋势/评论/达人/小店）见 [`references/data-sources.md §4`](references/data-sources.md)。
+  > 播放/销量比口径以 EchoTik 追踪的带货视频播放为准，阈值按实测校准；EchoTik 取不到的方向才退回 Google Trends + Tavily/Exa 近似并标"待数据确认"。
 
-**步骤5 · 逐品成稿**（每品判定 POD 路径后给全字段，见下）。
+**Step 4 · 评论挖掘，找改进点｜来源 Amazon / TikTok 评论 / Reddit / Walmart `[通]`**
+最容易被忽视、也是最大机会来源。用户在评论区说真话，"好用但是…"后面就是改进方向。
+- 抓 ≥50 条同类品评论（`[搜]` 用 `get_amazon_reviews(filterByStar=critical)`；`[兴]` 用 TikTok 视频高赞评论；
+  补 Reddit/Walmart 原声 → Tavily）。
+- 提炼：① 最满意 top3（各多少条）② 最不满意 top3（各多少条）③ 有购买意愿但没下单的原因
+  ④ 哪些痛点能靠**产品设计**解决、哪些只能靠**营销话术**解决。
+- 输出"加分点 / 雷区"两栏，每条带原声引用。
 
-## 2. POD 两条路径（每品必标 A/B）
+**Step 5 · 净利测算（不是只看售价）｜分析 `[通]`**
+新手只看售价、不算总成本，货到了才发现没钱赚。算**到手净利率**。
+- 逐项列：售价、采购成本、头程运费、平台佣金、广告占比、退货率、仓储、汇率损耗、其它。
+- 算出：单品总成本 / 单品净利 / **净利率** / 月盈亏平衡销量。
+- **安全线：净利率 > 25%。** 优秀 >30% ｜良好 20–30% ｜一般 15–20% ｜危险 <15%。
+  低于 20% 给出从哪项成本下手优化；容错太小就不建议做。`[兴]` 注意 $15–40 最佳价格带与高退货/高广告占比。
 
-- **A 常青/利基型**：姓氏定制门挂、宠物品种装饰画等。长尾 SEO + personalization，全年有量，可偏高价。
-- **B 假期应景型**：Halloween / Spring door cover 等。抢上架窗口 + 压价走量，节后归零。
+**Step 6 · IP 侵权排查【硬规则｜来源 USPTO/WIPO】`[通]`**
+- `wipo_search(source=USID, prod=<product>)` 查美国外观设计；`wipo_search(source=USID, hol=<对标品牌>)` 查品牌布局。
+- 命中风险专利号再 `pacer_search(patentNumber=...)` 查美国诉讼（最贵，仅高疑时用）。
+- 判定 高/中/低。**高风险直接弃用，换次优低风险对标重做本品，并说明替换原因。**
+- 特别盯：影视角色（恐怖片/迪士尼/漫威）、球队、品牌字体、名人肖像、专利结构。
 
-## 3. 每个推荐产品输出字段
+**Step 7 · 卖点/钩子文案测试｜AI `[兴] 重，[搜] 轻`**
+正式采购前先测卖点是否够吸引人。
+- `[兴]`：写 3 个不同风格的 **TikTok 前 3 秒钩子（每个 ≤15 字）** + 各自 15s 脚本框架（画面+台词+音效），
+  口语化、有冲击力、不要广告感。**如果钩子自己都提不起兴趣，这个品大概率有问题。**
+- `[搜]`：写 Listing 标题 / 五点 / 后台关键词 / A+ 方向，对齐搜索词与差评修正。
 
-- 产品名 | 路径(A/B) | 目标节日或利基
-- 对标 ASIN（链接）+ 主图视觉卖点元素逐条提取
-- **侵权风险【硬规则｜来源 USPTO/WIPO】**：
-  - `wipo_search(source=USID, prod=<product>)` 查美国外观设计；`wipo_search(source=USID, hol=<对标品牌>)` 查品牌布局
-  - 命中风险专利号再 `pacer_search(patentNumber=...)` 查美国诉讼（最贵，仅高疑时用）
-  - 判定 高/中/低。**高风险直接弃用，换次优低风险对标重做本节，并说明替换原因。**
-  - 特别盯：影视角色（恐怖片/迪士尼/漫威）、球队、品牌字体、名人肖像。
-- 产品优化建议（相对对标：尺寸/材质/定制玩法/套装）
+**Step 8 · 小批量实测建议（真金白银验证）`[通]`**
+前面都是纸上谈兵，落地必须实测：
+- 首批采购 50–100 个（别多），`[兴]` 投 $100–200 测试广告。
+- 看 3 个指标：点击率、转化率、**ROAS**。
+- 决策线：**3 天内出单且 ROAS > 2 → 加大投入；7 天没出单 → 果断放弃。**（写成报告里的验证计划，不替用户下单）
+
+## 2. 每个推荐产品输出字段
+
+- 产品名 | 平台与打法（搜/兴）| 目标场景或节日/利基
+- 对标（`[搜]` 带 `https://www.amazon.com/dp/<ASIN>` 链接；`[兴]` 带对标视频/小店 + 7天增长与播放/销量比）
+- 主图/首帧视觉卖点元素逐条提取
+- IP 风险判定（高/中/低 + 依据；高风险须换次优对标）
+- **微创新建议**：相对对标的功能微改 + 视觉强差异（呼应趋势与差评，1–2 个痛点，能拍出"啪一下"的视觉记忆点）
+- 净利测算结论（净利率 + 是否过安全线）
 - 定价建议（建议零售价 + 依据）
-- 运营策略（上架窗、广告、Review 冷启动、是否走 personalization）
-- Listing 建议（标题 / 五点 / 后台关键词 / A+ 方向）
+- 运营策略（`[搜]` 上架窗/广告/Review 冷启动/personalization；`[兴]` 钩子/达人/内容节奏/起量信号）
+- Listing / 钩子文案（按平台）
 - **生成产品图**：基于提取的视觉卖点出 1 张原创合规图（禁复刻对标主图、禁含受版权 IP），
-  竖款门挂用 `aspect_ratio=1:2`；把可复用的 AI 生图 prompt 一并写进报告。出图配方见 data-sources.md。
+  竖款门挂用 `aspect_ratio=1:2`、TikTok 首帧用竖屏；把可复用的 AI 生图 prompt 一并写进报告。出图配方见 data-sources.md。
 
-## 4. 硬性约束
+## 3. 硬性约束
 
 - 侵权零容忍：宁可不推也不推高风险品；生成图必须原创可商用，生成后**肉眼校验文字拼写**。
-- 每个建议必须有真实可点击对标 ASIN 链接，无链接视为无效。
-- 只推工厂能做的印刷软装品类，不推硬质电子/大型灯具。
+- 每个建议必须有真实可点击对标（ASIN 链接 / TikTok 视频或小店链接），无对标视为无效。
+- 净利率 < 20% 的品必须显式标注风险，不得包装成稳赚。
+- 工厂选品只推该工厂产能覆盖的品类（如港恋只做印刷软装，不推硬质电子/大型灯具）。
 - 积点意识：评论与诉讼检索最贵，先小批探（pageCount=1）再放量。
+- TikTok 销量阈值优先用 EchoTik `product/list` 实据；EchoTik 取不到的方向只能给"待数据确认"候选，不得当成已验证爆款。
 
-## 5. 报告模板
+## 4. 报告模板
 
 见 [`references/report-template.md`](references/report-template.md)。产出后可用 lark-doc 落成飞书文档进知识库。
