@@ -158,3 +158,22 @@ curl -sS "https://api.kie.ai/api/v1/jobs/recordInfo?taskId=$TASK" \
   | python3 -c "import sys,json;d=json.load(sys.stdin)['data'];import json as j;print(d['state']);print(j.loads(d.get('resultJson') or '{}').get('resultUrls'))"
 ```
 约 6 积点/张、15–90s。**出图后务必肉眼校验文字拼写**（gpt-image 偶尔画错字）。生图 prompt 要求：原创、无受版权 IP、e-commerce hero shot、门框实景。
+
+### 批量出图（多张时必读 · 踩坑固化）
+
+要出多张图（如报告每模块配一张）时，**别用前台长 bash 轮询循环**——会撞执行时限（实测 2–5 分钟被 kill），且 bash 循环里逐个 `curl` 易整体卡死。正确姿势 **submit-all → Python 收集器一次性收 URL → 按 URL 插入**：
+
+1. **先全部提交**，把 `模块|taskId` 写进一个文件（提交很快，秒返回 taskId）。
+2. **用 Python（urllib，每次调用带 `timeout=15`）批量轮询**取 `resultUrls`，不要用 `while read + curl` 的 bash 循环：
+   ```python
+   import os,json,urllib.request
+   key=os.environ['KIE_API_KEY']
+   for mod,tid in [l.split('|') for l in open('/tmp/tasks.txt').read().split()]:
+       d=json.load(urllib.request.urlopen(urllib.request.Request(
+           f"https://api.kie.ai/api/v1/jobs/recordInfo?taskId={tid}",
+           headers={"Authorization":f"Bearer {key}"}),timeout=15))['data']
+       if d['state']=='success':
+           print(mod, json.loads(d['resultJson'])['resultUrls'][0])
+   ```
+3. **插入直接用图 URL**（`<img href="<kie_url>">`），飞书会自动 re-host 成永久素材，**无需先下载**（除非要肉眼校验文字才下载 Read）。
+4. 单张同步出图仍可用上面的 curl 法；只有"多张"才必须走批量收集器。
