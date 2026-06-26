@@ -112,14 +112,17 @@ curl -sS --max-time 40 -G 'https://open.echotik.live/api/v3/echotik/product/list
 读 `data[]`。每条含：`product_id / product_name / spu_avg_price / total_sale_cnt / total_sale_7d_cnt /
 total_views_cnt / total_views_7d_cnt / product_rating / review_count / seller_id / from_flag(1本土/2跨境)`。
 
-**机会窗口阈值 → 参数映射（文章实测，命中即候选）：**
+**机会窗口阈值 → 参数映射（实测校准，命中即候选）：**
 
-| 文章阈值 | EchoTik 实现 |
+| 选品信号 | EchoTik 实现 / 判读 |
 |---|---|
-| 7 天销量增长 > 50%（正在起量） | `sales_trend_flag=1`(上升) + `product_sort_field=4`(按 total_sale_7d_cnt) `sort_type=1`(降序)；用 `total_sale_7d_cnt/total_sale_cnt` 复核增量占比 |
+| 起量阶段（正在爆发的新品） | `sales_trend_flag=1`(上升) + `product_sort_field=4`(按 total_sale_7d_cnt) `sort_type=1`(降序)；**`total_sale_7d_cnt / total_sale_cnt > 40%` = 刚爆发**（比"增长>50%"更可操作） |
 | 总销量 < 5000（没被大卖盯上） | `max_total_sale_cnt=5000` |
 | 售价 $15–40（最佳价格带） | `min_spu_avg_price=15` `max_spu_avg_price=40` |
-| 播放量/销量 > 1000（内容有爆发力） | 取回后算 `total_views_cnt / total_sale_cnt`（注：此为 EchoTik 追踪的带货视频播放，非全站播放，阈值按实测口径校准） |
+| 内容爆发力（需求侧，**要高**） | `total_views_cnt > ~100k` 且 `total_video_cnt > ~50` / `total_ifl_cnt > ~30` → 有人愿意拍、能起量 |
+| 转化效率（盈利侧，**要低**） | `total_views_cnt / total_sale_cnt` **越低越好**；实测 **7天口径 `total_views_7d_cnt/total_sale_7d_cnt < ~50` = 转化强**，几百以上=有流量没转化，慎入 |
+
+> ⚠️ **口径校准**：文章原文"播放/销量 > 1000"是**反的**——高比值=有流量没转化的差信号。实测一个转化极强的爆品(250周年款)总比值才 152、7天 24。选品真正要的是**转化高(比值低) + 内容爆发力(总播放/视频数高)** 两者兼备。深查单品用 `product/detail?product_ids=` 取全量 `total_views_*`/`total_sale_*` 字段自行计算。
 
 其它常用过滤：`category_id`/`category_l2_id`/`category_l3_id`（先用下方分类接口取 id）、`is_hot=1`(爆款)、
 `min_first_crawl_dt`(yyyyMMdd，找新近上架)、`min/max_total_views_cnt`、`min/max_product_commission_rate`、`free_shipping`。
