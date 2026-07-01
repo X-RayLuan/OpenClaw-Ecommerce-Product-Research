@@ -3,11 +3,14 @@ name: openclaw-ecommerce-product-research
 description: >
   Use when doing cross-border e-commerce / 外贸工厂 product selection (选品) on any
   platform — Amazon / Walmart / 独立站 (搜索电商) or TikTok Shop / 短视频 (兴趣电商).
-  Runs a platform-aware flow: 时间窗口 → 找场景 → 真实销量阈值 → 评论挖改进点 →
-  净利测算 → 钩子文案测试 → 小批量实测, plus IP-risk screening and AI product images.
-  Produces a sourced selection report citing raw sources only. Triggers: "选品",
-  "选品报告", "product research", "TikTok 选品", "Amazon 选品", "跨境选品", "工厂选品",
-  "兴趣电商选品", "对标爆款", "对标 ASIN", "POD selection".
+  Starts by diverging the full category space (office-hours method) and converging on a
+  strategy (CEO-review lens) BEFORE data validation, so it never anchors on a single
+  product. Then runs a platform-aware flow: 时间窗口 → 找场景 → 真实销量阈值 →
+  评论挖改进点 → 净利测算 → 钩子文案测试 → 小批量实测, plus IP-risk screening and
+  AI product images. Produces a sourced selection report citing raw sources only.
+  Triggers: "选品", "选品报告", "product research", "TikTok 选品", "Amazon 选品",
+  "跨境选品", "工厂选品", "兴趣电商选品", "对标爆款", "对标 ASIN", "POD selection",
+  "品类头脑风暴".
 ---
 
 # Ecommerce / 外贸工厂 选品研究
@@ -47,7 +50,38 @@ description: >
 > ⚠️ **数据源脱敏铁律**：客户/对外报告里**不得出现上游数据厂商名（Pangolinfo/鲲数据、Tavily、Exa、EchoTik 等）**。
 > 只按原始来源标注：Amazon、TikTok（不写 EchoTik）、Google（Trends / AI Overview）、Reddit、Walmart 评论、Pinterest、USPTO/WIPO 外观设计库、1688/阿里国际站。
 
-## 1. 选品流程（逐步执行，每步先产出结论再进下一步）
+## 选品前置 · 品类空间发散 → 战略收敛（先做，别锚定单一品类）
+
+> 最大的选品陷阱是**一上来就锚定一个产品**（如"门挂 door cover"）然后一路做下去，
+> 错过工厂产能能覆盖的更大机会空间。**开跑数据前，先发散再收敛。** 这一步是分析 +
+> 头脑风暴，不烧数据积点。
+
+**A. 发散（office-hours 方法）：机会空间 = 产品形态 × 节日/场景 × 平台**
+- **产品形态**：列出工厂产能能覆盖的**全部**形态，而非只有一个（印刷软装厂例：门帘 /
+  花环 / 庭院旗 / 桌旗 / 抱枕套 / 挂毯 / 树裙 / 场地背景布 / 糖果袜…）
+- **节日/场景**：7 大节日 + **非节日常青**（婚庆 / 生日 / 乔迁 / 姓氏定制 / 宠物定制）
+- **平台**：Amazon（搜索长尾）/ TikTok（视觉爆款）/ Etsy（手作高溢价）/ 独立站
+- 输出一张"形态 × 场景"矩阵，每格标竞争度 + 工厂契合度。
+
+**B. 挑战前提（office-hours 内核，逐条质疑默认假设）**
+- "该做 X 品类吗？"—— X 是不是红海？工厂的**独特能力**（如一件起印 / 柔性定制）在 X 上用得上吗？
+- "该聚焦大节吗？"—— 大节最卷 + 有**季节悬崖**（节后归零），小厂扛不扛得住"一年赌两个月"？
+- 找**贯穿数据的真信号**：如"上位场景词 ＞ 单一节日词"（spring ＞ easter、fall ＞ thanksgiving）、
+  "多季复用被反复夸"、"personalization 是唯一抄不了的护城河"。
+
+**C. 收敛（CEO-review 视角）：给 3 个品类战略方案，推荐一条当脊柱**
+- 方案A 现状延伸（改动小，但常是红海、浪费工厂优势）
+- 方案B 差异化护城河优先（把工厂独特能力变壁垒，如"定制常青"，全年现金流不靠单节）
+- 方案C 平台/渠道差异化（一套设计摊到多平台）
+- **推荐**：明确选一条 + 一句话理由（必须对齐工厂真实优势，而非跟风爆款）。
+
+**D. 收敛出候选 → 带入下面『选品流程』做真实数据验证**
+从推荐战略里挑 3–5 个具体候选品类/关键词，进入下面的选品流程逐一验证（搜索量 / 竞争 /
+净利 / 侵权），**数据说话砍到 2–3 个真做的品**。
+
+> 可选：战略较重时用 `/plan-ceo-review` 单独把 C 步的方案再审一轮（是否够大、有无更狠的重构）。
+
+## 1. 选品流程（数据验证 · 对上面收敛出的候选逐一跑，每步先产出结论再进下一步）
 
 每一步都先看平台再决定工具。括号里 `[搜]`=搜索电商、`[兴]`=兴趣电商、`[通]`=两者通用。
 
